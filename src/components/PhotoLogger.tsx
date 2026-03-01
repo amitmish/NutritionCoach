@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, X, Check, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { Camera, X, Check, Loader2, Sparkles, AlertCircle, Upload } from 'lucide-react';
 import { analyzeMealImage, type AIAnalysisResult } from '../lib/gemini';
 import { cn } from '../lib/utils';
 
@@ -10,14 +10,19 @@ interface PhotoLoggerProps {
 }
 
 export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<AIAnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleCaptureClick = () => {
-        fileInputRef.current?.click();
+        cameraInputRef.current?.click();
+    };
+
+    const handleUploadClick = () => {
+        galleryInputRef.current?.click();
     };
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,21 +87,31 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
 
                     {/* Image Preview / Capture Trigger */}
                     <div
-                        onClick={!imageUri && !isAnalyzing ? handleCaptureClick : undefined}
+                        onClick={undefined}
                         className={cn(
                             "relative w-full aspect-square rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all",
-                            !imageUri ? "border-white/20 hover:border-indigo-400/50 hover:bg-white/5 cursor-pointer" : "border-white/10 bg-black",
+                            !imageUri ? "border-white/20 p-6" : "border-white/10 bg-black",
                             isAnalyzing && "pointer-events-none opacity-80"
                         )}
                     >
                         {imageUri ? (
                             <img src={imageUri} alt="Meal" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="flex flex-col items-center gap-3 text-neutral-500 group">
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-indigo-500/10 transition-colors">
-                                    <Camera size={28} className="group-hover:text-indigo-400 transition-colors" />
-                                </div>
-                                <span className="font-medium text-sm">Tap to Open Camera</span>
+                            <div className="flex flex-col items-center gap-4 w-full">
+                                <button
+                                    onClick={handleCaptureClick}
+                                    className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 font-medium transition-colors"
+                                >
+                                    <Camera size={20} />
+                                    Take Photo
+                                </button>
+                                <button
+                                    onClick={handleUploadClick}
+                                    className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 font-medium transition-colors"
+                                >
+                                    <Upload size={20} />
+                                    Upload from Gallery
+                                </button>
                             </div>
                         )}
 
@@ -115,13 +130,20 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
                         </AnimatePresence>
                     </div>
 
-                    {/* Hidden Input */}
+                    {/* Hidden Inputs */}
                     <input
                         type="file"
                         accept="image/*"
                         capture="environment"
                         className="hidden"
-                        ref={fileInputRef}
+                        ref={cameraInputRef}
+                        onChange={handleFileChange}
+                    />
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={galleryInputRef}
                         onChange={handleFileChange}
                     />
 
@@ -172,12 +194,11 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
                             setImageUri(null);
                             setResult(null);
                             setError(null);
-                            setTimeout(handleCaptureClick, 50); // small delay to clear states before opening cam
                         }}
                         disabled={isAnalyzing}
                         className="py-3.5 rounded-xl font-semibold text-neutral-400 bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 disabled:opacity-50"
                     >
-                        {imageUri ? 'Retake' : 'Cancel'}
+                        {imageUri ? 'Discard' : 'Cancel'}
                     </button>
 
                     <button
