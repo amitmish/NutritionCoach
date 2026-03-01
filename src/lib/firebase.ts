@@ -5,7 +5,7 @@ import { getAuth } from 'firebase/auth';
 // Your web app's Firebase configuration
 // TODO: Replace with your actual Firebase config from the console
 const firebaseConfig = {
-    apiKey: "AIzaSyACQSTndGMOHe90wVPqd61QEzE2mXwuIYA",
+    apiKey: "AIzaSyBfQbNnJKYSa1KttXqK4G6MsSsFrZukWO0",
     authDomain: "nutrisnap-59353.firebaseapp.com",
     projectId: "nutrisnap-59353",
     storageBucket: "nutrisnap-59353.firebasestorage.app",
