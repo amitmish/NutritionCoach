@@ -17,6 +17,49 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
     const [result, setResult] = useState<AIAnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Helper to resize and convert image to a smaller JPEG base64
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const MAX_SIZE = 1024;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height = Math.round((height * MAX_SIZE) / width);
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width = Math.round((width * MAX_SIZE) / height);
+                        height = MAX_SIZE;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error("Failed to get canvas context"));
+
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Compress to quality 0.8
+                resolve(canvas.toDataURL("image/jpeg", 0.8));
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Failed to load image for compression"));
+            };
+            img.src = url;
+        });
+    };
+
     const handleCaptureClick = () => {
         cameraInputRef.current?.click();
     };
@@ -29,27 +72,24 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const dataUrl = e.target?.result as string;
-            setImageUri(dataUrl);
+        setIsAnalyzing(true);
+        setError(null);
 
-            // Analyze
-            setIsAnalyzing(true);
-            setError(null);
-            try {
-                // Strip data:image/...;base64,
-                const base64Data = dataUrl.split(',')[1];
-                const res = await analyzeMealImage(base64Data);
-                setResult(res);
-            } catch (err: any) {
-                setError(err.message || "Failed to analyze image.");
-            } finally {
-                setIsAnalyzing(false);
-            }
-        };
-        reader.readAsDataURL(file);
+        try {
+            // Compress and preview the image
+            const compressedProxyDataUrl = await compressImage(file);
+            setImageUri(compressedProxyDataUrl);
+
+            // Analysis
+            const base64Data = compressedProxyDataUrl.split(',')[1];
+            const res = await analyzeMealImage(base64Data);
+            setResult(res);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Failed to analyze image.");
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const handleSave = () => {

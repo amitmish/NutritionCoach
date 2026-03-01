@@ -55,8 +55,14 @@ Respond ONLY with a valid JSON block containing exactly the following structure 
         // Clean up markdown markers if Gemini ignores the instruction
         const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(cleanedText) as AIAnalysisResult;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error analyzing image with Gemini:", error);
-        throw new Error("Failed to analyze the meal. Please try again.");
+
+        let errorMessage = "Failed to analyze the meal. Please try again.";
+        if (error.message) {
+            errorMessage += ` Details: ${error.message}`;
+        }
+
+        throw new Error(errorMessage);
     }
 }
