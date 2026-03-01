@@ -17,46 +17,51 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
     const [result, setResult] = useState<AIAnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Helper to resize and convert image to a smaller JPEG base64
+    // Helper to resize and convert image to a smaller JPEG base64, or fallback to original data URL
     const compressImage = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                const MAX_SIZE = 1024;
-                let width = img.width;
-                let height = img.height;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target?.result as string;
+                const img = new Image();
+                img.onload = () => {
+                    const MAX_SIZE = 1024;
+                    let width = img.width;
+                    let height = img.height;
 
-                if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height = Math.round((height * MAX_SIZE) / width);
-                        width = MAX_SIZE;
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height = Math.round((height * MAX_SIZE) / width);
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width = Math.round((width * MAX_SIZE) / height);
+                            height = MAX_SIZE;
+                        }
                     }
-                } else {
-                    if (height > MAX_SIZE) {
-                        width = Math.round((width * MAX_SIZE) / height);
-                        height = MAX_SIZE;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        console.warn("Failed to get canvas context, falling back to original image");
+                        return resolve(dataUrl);
                     }
-                }
 
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return reject(new Error("Failed to get canvas context"));
-
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Compress to quality 0.8
-                resolve(canvas.toDataURL("image/jpeg", 0.8));
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL("image/jpeg", 0.8));
+                };
+                img.onerror = () => {
+                    console.warn("Browser cannot decode image for compression, falling back to original");
+                    resolve(dataUrl);
+                };
+                img.src = dataUrl;
             };
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error("Failed to load image for compression"));
-            };
-            img.src = url;
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsDataURL(file);
         });
     };
 
@@ -81,8 +86,12 @@ export function PhotoLogger({ onAddCalories, onClose }: PhotoLoggerProps) {
             setImageUri(compressedProxyDataUrl);
 
             // Analysis
-            const base64Data = compressedProxyDataUrl.split(',')[1];
-            const res = await analyzeMealImage(base64Data);
+            const match = compressedProxyDataUrl.match(/^data:(.*?);base64,(.*)$/);
+            if (!match) throw new Error("Invalid image data");
+            const mimeType = match[1] || "image/jpeg";
+            const base64Data = match[2];
+
+            const res = await analyzeMealImage(base64Data, mimeType);
             setResult(res);
         } catch (err: any) {
             console.error(err);

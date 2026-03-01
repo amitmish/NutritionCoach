@@ -14,7 +14,7 @@ export interface AIAnalysisResult {
     recommendation: string;
 }
 
-export async function analyzeMealImage(base64Image: string): Promise<AIAnalysisResult> {
+export async function analyzeMealImage(base64Image: string, mimeType: string = "image/jpeg"): Promise<AIAnalysisResult> {
     if (!apiKey) {
         throw new Error("Missing Gemini API Key");
     }
@@ -43,7 +43,7 @@ Respond ONLY with a valid JSON block containing exactly the following structure 
         {
             inlineData: {
                 data: base64Image,
-                mimeType: "image/jpeg"
+                mimeType
             }
         }
     ];
